@@ -83,5 +83,53 @@
     "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
     "type": "checkbox",
     "default_value": false
+  },
+  "msg_1_title": {
+    "display_name": "Mensaje 1 - Titulo",
+    "description": "Titulo del primer mensaje predefinido",
+    "type": "text",
+    "required": false
+  },
+  "msg_1_body": {
+    "display_name": "Mensaje 1 - Contenido",
+    "description": "Texto del primer mensaje predefinido",
+    "type": "paragraph",
+    "required": false
+  },
+  "msg_2_title": {
+    "display_name": "Mensaje 2 - Titulo",
+    "description": "Titulo del segundo mensaje predefinido (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "msg_2_body": {
+    "display_name": "Mensaje 2 - Contenido",
+    "description": "Texto del segundo mensaje predefinido (opcional)",
+    "type": "paragraph",
+    "required": false
+  },
+  "msg_3_title": {
+    "display_name": "Mensaje 3 - Titulo",
+    "description": "Titulo del tercer mensaje predefinido (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "msg_3_body": {
+    "display_name": "Mensaje 3 - Contenido",
+    "description": "Texto del tercer mensaje predefinido (opcional)",
+    "type": "paragraph",
+    "required": false
+  },
+  "msg_4_title": {
+    "display_name": "Mensaje 4 - Titulo",
+    "description": "Titulo del cuarto mensaje predefinido (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "msg_4_body": {
+    "display_name": "Mensaje 4 - Contenido",
+    "description": "Texto del cuarto mensaje predefinido (opcional)",
+    "type": "paragraph",
+    "required": false
   }
 }

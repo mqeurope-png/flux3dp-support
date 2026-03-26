@@ -2,7 +2,6 @@ let fdClient;
 let ticketId;
 let ticketSubject;
 let authToken;
-let cannedList = [];
 
 app.initialized()
   .then(function(client) {
@@ -20,111 +19,64 @@ app.initialized()
     ticketSubject = ticketData.ticket.subject;
     authToken = btoa(iparams.freshdesk_api_key + ":X");
 
-    buildContacts(iparams);
-    setupButtons();
-    loadCanned();
+    const list = document.getElementById("contacts-list");
+    for (let i = 1; i <= 4; i++) {
+      const name = iparams["contact_" + i + "_name"];
+      const email = iparams["contact_" + i + "_email"];
+      if (name && email) {
+        const label = document.createElement("label");
+        label.className = "contact-option";
+        const cb = document.createElement("input");
+        cb.type = "checkbox";
+        cb.name = "recipient";
+        cb.value = email;
+        cb.dataset.contactName = name;
+        if (iparams["contact_" + i + "_default"]) {
+          cb.checked = true;
+        }
+        const span = document.createElement("span");
+        span.textContent = name + " (" + email + ")";
+        label.appendChild(cb);
+        label.appendChild(span);
+        list.appendChild(label);
+      }
+    }
+
+    buildTemplates(iparams);
+    document.getElementById("forwardBtn").disabled = false;
+    document.getElementById("forwardBtn").addEventListener("click", handleForward);
   })
   .catch(function(err) {
     showStatus("Error al iniciar: " + (err.message || JSON.stringify(err)), "error");
   });
 
-function buildContacts(iparams) {
-  const list = document.getElementById("contacts-list");
+function buildTemplates(iparams) {
+  const msgs = [];
   for (let i = 1; i <= 4; i++) {
-    const name = iparams["contact_" + i + "_name"];
-    const email = iparams["contact_" + i + "_email"];
-    if (name && email) {
-      const label = document.createElement("label");
-      label.className = "contact-option";
-      const cb = document.createElement("input");
-      cb.type = "checkbox";
-      cb.name = "recipient";
-      cb.value = email;
-      cb.dataset.contactName = name;
-      if (iparams["contact_" + i + "_default"]) {
-        cb.checked = true;
-      }
-      const span = document.createElement("span");
-      span.textContent = name + " (" + email + ")";
-      label.appendChild(cb);
-      label.appendChild(span);
-      list.appendChild(label);
+    const title = iparams["msg_" + i + "_title"];
+    const body = iparams["msg_" + i + "_body"];
+    if (title && body) {
+      msgs.push({ title: title, body: body });
     }
   }
-}
+  if (msgs.length === 0) { return; }
 
-function setupButtons() {
-  document.getElementById("forwardBtn").disabled = false;
-  document.getElementById("draftBtn").disabled = false;
-  document.getElementById("forwardBtn").addEventListener("click", function() {
-    handleAction("forward");
+  const select = document.getElementById("templateSelect");
+  for (let i = 0; i < msgs.length; i++) {
+    const opt = document.createElement("option");
+    opt.value = String(i);
+    opt.textContent = msgs[i].title;
+    opt.dataset.body = msgs[i].body;
+    select.appendChild(opt);
+  }
+
+  document.getElementById("templates-section").classList.remove("hidden");
+  select.addEventListener("change", function() {
+    if (this.value === "") { return; }
+    const opt = this.options[this.selectedIndex];
+    document.getElementById("agentMessage").value = opt.dataset.body;
+    document.getElementById("agentMessage").focus();
   });
-  document.getElementById("draftBtn").addEventListener("click", function() {
-    handleAction("draft");
-  });
-}
-
-function loadCanned() {
-  const ctx = { auth_token: authToken };
-  fdClient.request.invokeTemplate("getCannedFolders", { context: ctx })
-    .then(function(res) {
-      const folders = JSON.parse(res.response);
-      if (!folders || folders.length === 0) { return; }
-
-      const promises = [];
-      for (let i = 0; i < folders.length; i++) {
-        const fCtx = { auth_token: authToken, folder_id: folders[i].id };
-        promises.push(
-          fdClient.request.invokeTemplate("getCannedResponses", { context: fCtx })
-            .then(function(r) {
-              return { folder: folders[i].name, responses: JSON.parse(r.response) };
-            })
-        );
-      }
-      return Promise.all(promises);
-    })
-    .then(function(folderData) {
-      if (!folderData) { return; }
-
-      const select = document.getElementById("cannedSelect");
-      for (let f = 0; f < folderData.length; f++) {
-        const grp = folderData[f];
-        if (!grp.responses || grp.responses.length === 0) { continue; }
-
-        const optgroup = document.createElement("optgroup");
-        optgroup.label = grp.folder;
-
-        for (let r = 0; r < grp.responses.length; r++) {
-          const cr = grp.responses[r];
-          cannedList.push({ id: cr.id, title: cr.title, content: cr.content_html || cr.content });
-          const opt = document.createElement("option");
-          opt.value = String(cannedList.length - 1);
-          opt.textContent = cr.title;
-          optgroup.appendChild(opt);
-        }
-        select.appendChild(optgroup);
-      }
-
-      if (cannedList.length > 0) {
-        document.getElementById("canned-section").classList.remove("hidden");
-        select.addEventListener("change", function() {
-          if (this.value === "") { return; }
-          const idx = parseInt(this.value, 10);
-          const ta = document.getElementById("agentMessage");
-          ta.value = stripHtml(cannedList[idx].content);
-          ta.focus();
-        });
-      }
-    })
-    .catch(function() {
-      // API not available on this plan — silently hide dropdown
-    });
-}
-
-function stripHtml(html) {
-  const div = document.createElement("div");
-  div.innerHTML = html || "";
-  return div.textContent || "";
 }
 
 function getSelected() {
@@ -138,17 +90,15 @@ function getSelected() {
   return { emails: emails, names: names };
 }
 
-function handleAction(mode) {
+function handleForward() {
   const selected = getSelected();
   if (selected.emails.length === 0) {
     showStatus("Selecciona al menos un destinatario.", "error");
     return;
   }
 
-  const fBtn = document.getElementById("forwardBtn");
-  const dBtn = document.getElementById("draftBtn");
-  fBtn.disabled = true;
-  dBtn.disabled = true;
+  const btn = document.getElementById("forwardBtn");
+  btn.disabled = true;
   showStatus("Obteniendo ticket y conversaciones...", "loading");
 
   const ctx = { ticket_id: ticketId, auth_token: authToken };
@@ -163,42 +113,26 @@ function handleAction(mode) {
     const msg = document.getElementById("agentMessage").value.trim();
     const body = buildBody(ticket, convs, msg);
 
-    if (mode === "forward") {
-      showStatus("Reenviando...", "loading");
-      return fdClient.request.invokeTemplate("forwardTicket", {
-        context: ctx,
-        body: JSON.stringify({
-          body: body,
-          to_emails: selected.emails,
-          include_quoted_text: false,
-          include_original_attachments: true
-        })
-      }).then(function() { return "forward"; });
-    }
-    showStatus("Guardando borrador...", "loading");
-    return fdClient.request.invokeTemplate("createDraft", {
+    showStatus("Reenviando...", "loading");
+    return fdClient.request.invokeTemplate("forwardTicket", {
       context: ctx,
       body: JSON.stringify({
         body: body,
-        to_emails: selected.emails
+        to_emails: selected.emails,
+        include_quoted_text: false,
+        include_original_attachments: true
       })
-    }).then(function() { return "draft"; });
+    }).then(function() { return selected.names.join(", "); });
   })
-  .then(function(result) {
-    const n = selected.names.join(", ");
-    if (result === "forward") {
-      showStatus("Reenviado a " + n, "success");
-    } else {
-      showStatus("Borrador guardado", "success");
-    }
+  .then(function(names) {
+    showStatus("Reenviado a " + names, "success");
     setTimeout(function() {
       fdClient.instance.close();
     }, 1500);
   })
   .catch(function(err) {
     showStatus("Error: " + (err.message || JSON.stringify(err)), "error");
-    fBtn.disabled = false;
-    dBtn.disabled = false;
+    btn.disabled = false;
   });
 }
 

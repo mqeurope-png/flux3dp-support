@@ -55,16 +55,16 @@ body {
   user-select: none;
 }
 
-.canned-section {
+.templates-section {
   display: flex;
   flex-direction: column;
 }
 
-.canned-section.hidden {
+.templates-section.hidden {
   display: none;
 }
 
-#cannedSelect {
+#templateSelect {
   width: 100%;
   padding: 8px 10px;
   border: 1px solid #ddd;
@@ -75,7 +75,7 @@ body {
   cursor: pointer;
 }
 
-#cannedSelect:focus {
+#templateSelect:focus {
   outline: none;
   border-color: #1a73e8;
 }

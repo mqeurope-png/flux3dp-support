@@ -31,38 +31,5 @@
         "Content-Type": "application/json"
       }
     }
-  },
-  "createDraft": {
-    "schema": {
-      "method": "POST",
-      "host": "<%= iparam.freshdesk_domain %>",
-      "path": "/api/v2/tickets/<%= context.ticket_id %>/reply_draft",
-      "headers": {
-        "Authorization": "Basic <%= context.auth_token %>",
-        "Content-Type": "application/json"
-      }
-    }
-  },
-  "getCannedFolders": {
-    "schema": {
-      "method": "GET",
-      "host": "<%= iparam.freshdesk_domain %>",
-      "path": "/api/v2/canned_response_folders",
-      "headers": {
-        "Authorization": "Basic <%= context.auth_token %>",
-        "Content-Type": "application/json"
-      }
-    }
-  },
-  "getCannedResponses": {
-    "schema": {
-      "method": "GET",
-      "host": "<%= iparam.freshdesk_domain %>",
-      "path": "/api/v2/canned_response_folders/<%= context.folder_id %>/canned_responses",
-      "headers": {
-        "Authorization": "Basic <%= context.auth_token %>",
-        "Content-Type": "application/json"
-      }
-    }
   }
 }
