@@ -1,5 +1,6 @@
 let fdClient;
 let ticketId;
+let ticketSubject;
 let authToken;
 
 app.initialized()
@@ -9,8 +10,9 @@ app.initialized()
   })
   .then(function(data) {
     ticketId = data.ticket.id;
+    ticketSubject = data.ticket.subject;
     document.getElementById("ticket-info").textContent =
-      "Ticket #" + ticketId + " — " + data.ticket.subject;
+      "Ticket #" + ticketId + " — " + ticketSubject;
 
     return fdClient.iparams.get();
   })
@@ -48,7 +50,7 @@ app.initialized()
     btn.addEventListener("click", forwardConversation);
   })
   .catch(function(err) {
-    document.getElementById("status").textContent = "Error al iniciar: " + err.message;
+    document.getElementById("status").textContent = "Error al iniciar: " + (err.message || JSON.stringify(err));
     document.getElementById("status").className = "error";
   });
 
@@ -72,28 +74,29 @@ function forwardConversation() {
     return;
   }
 
-  statusDiv.textContent = "Obteniendo conversaciones...";
+  statusDiv.textContent = "Obteniendo ticket y conversaciones...";
   statusDiv.className = "loading";
   btn.disabled = true;
 
-  fdClient.request.invokeTemplate("getConversations", {
-    context: {
-      ticket_id: ticketId,
-      auth_token: authToken
-    }
-  })
-  .then(function(response) {
-    const conversations = JSON.parse(response.response);
+  const ctx = { ticket_id: ticketId, auth_token: authToken };
 
-    statusDiv.textContent = "Preparando reenvio (" + conversations.length + " mensajes)...";
+  // Get ticket details AND conversations in parallel
+  Promise.all([
+    fdClient.request.invokeTemplate("getTicket", { context: ctx }),
+    fdClient.request.invokeTemplate("getConversations", { context: ctx })
+  ])
+  .then(function(results) {
+    const ticket = JSON.parse(results[0].response);
+    const conversations = JSON.parse(results[1].response);
 
-    const emailBody = buildConversationHtml(conversations);
+    const totalMessages = 1 + conversations.length;
+    statusDiv.textContent = "Preparando reenvio (" + totalMessages + " mensajes)...";
+
+    // Build email body: ticket description + all conversations
+    const emailBody = buildFullEmailHtml(ticket, conversations);
 
     return fdClient.request.invokeTemplate("replyTicket", {
-      context: {
-        ticket_id: ticketId,
-        auth_token: authToken
-      },
+      context: ctx,
       body: JSON.stringify({
         body: emailBody,
         to_emails: recipients
@@ -107,7 +110,7 @@ function forwardConversation() {
     btn.disabled = false;
   })
   .catch(function(err) {
-    statusDiv.textContent = "Error: " + err.message;
+    statusDiv.textContent = "Error: " + (err.message || JSON.stringify(err));
     statusDiv.className = "error";
     btn.disabled = false;
   });
@@ -123,48 +126,44 @@ function getSelectedNames() {
   return names.join(", ");
 }
 
-function buildConversationHtml(conversations) {
-  let html = "<h3>Conversacion completa del ticket #" + ticketId + "</h3>";
+function buildFullEmailHtml(ticket, conversations) {
+  let html = "<h3>Ticket #" + ticketId + " — " + ticketSubject + "</h3>";
   html += "<hr>";
 
-  if (conversations.length === 0) {
-    html += "<p><em>No hay conversaciones en este ticket.</em></p>";
-    return html;
-  }
+  // 1. Original ticket description (first message)
+  const ticketDate = new Date(ticket.created_at).toLocaleString("es-ES");
+  const ticketFrom = ticket.requester ? (ticket.requester.email || ticket.requester.name || "Cliente") : "Cliente";
 
-  conversations.sort(function(a, b) {
-    return new Date(a.created_at) - new Date(b.created_at);
-  });
+  html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #f57c00;background:#fff8e1;'>";
+  html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
+  html += "<strong>" + ticketFrom + "</strong> — " + ticketDate + " (Mensaje original)";
+  html += "</p>";
+  html += "<div>" + (ticket.description || ticket.description_text || "") + "</div>";
+  html += "</div>";
 
-  for (let i = 0; i < conversations.length; i++) {
-    const conv = conversations[i];
-    const date = new Date(conv.created_at).toLocaleString("es-ES");
-    const from = conv.from_email || "Agente";
-    const source = getSourceLabel(conv.source);
+  // 2. All conversations (replies and notes)
+  if (conversations.length > 0) {
+    conversations.sort(function(a, b) {
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
 
-    html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #2196F3;background:#f9f9f9;'>";
-    html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
-    html += "<strong>" + from + "</strong> — " + date + " (" + source + ")";
-    html += "</p>";
-    html += "<div>" + (conv.body || conv.body_text || "") + "</div>";
-    html += "</div>";
+    for (let i = 0; i < conversations.length; i++) {
+      const conv = conversations[i];
+      const date = new Date(conv.created_at).toLocaleString("es-ES");
+      const from = conv.from_email || "Agente";
+      const isPrivate = conv.private;
+      const borderColor = isPrivate ? "#9e9e9e" : "#2196F3";
+      const bgColor = isPrivate ? "#f5f5f5" : "#e3f2fd";
+      const tag = isPrivate ? "Nota privada" : "Respuesta";
+
+      html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid " + borderColor + ";background:" + bgColor + ";'>";
+      html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
+      html += "<strong>" + from + "</strong> — " + date + " (" + tag + ")";
+      html += "</p>";
+      html += "<div>" + (conv.body || conv.body_text || "") + "</div>";
+      html += "</div>";
+    }
   }
 
   return html;
-}
-
-function getSourceLabel(source) {
-  const labels = {
-    0: "Respuesta",
-    1: "Nota",
-    2: "Email",
-    3: "Tweet",
-    4: "Facebook",
-    5: "Telefono",
-    6: "Chat",
-    7: "Mobihelp",
-    8: "Portal",
-    9: "Foro"
-  };
-  return labels[source] || "Otro";
 }
