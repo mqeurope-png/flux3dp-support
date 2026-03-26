@@ -1,0 +1,31 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+  <meta charset="UTF-8">
+  <title>Reenviar conversación</title>
+  <script src="{{{appclient}}}"></script>
+  <link rel="stylesheet" type="text/css" href="styles/dialog.css">
+</head>
+<body>
+  <div id="dialog-app">
+    <div class="recipients-summary">
+      <p class="label">Destinatarios:</p>
+      <div id="recipients-list"></div>
+    </div>
+
+    <div class="message-section">
+      <p class="label">Mensaje para los destinatarios (opcional):</p>
+      <textarea id="agentMessage" rows="5" placeholder="Escribe un mensaje personal para los destinatarios del reenvío..."></textarea>
+    </div>
+
+    <div class="actions">
+      <button id="forwardBtn" class="btn btn-primary" disabled>Reenviar ahora</button>
+      <button id="draftBtn" class="btn btn-secondary" disabled>Guardar borrador</button>
+      <button id="cancelBtn" class="btn btn-cancel">Cancelar</button>
+    </div>
+
+    <div id="status"></div>
+  </div>
+  <script src="scripts/dialog.js"></script>
+</body>
+</html>

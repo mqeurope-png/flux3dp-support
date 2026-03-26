@@ -2,10 +2,41 @@ let fdClient;
 let ticketId;
 let ticketSubject;
 let authToken;
+let pendingDialogData = null;
 
 app.initialized()
   .then(function(client) {
     fdClient = client;
+
+    // Listen for messages from the dialog
+    fdClient.instance.receive(function(event) {
+      const msg = event.helper.getMessage();
+
+      if (msg.action === "dialogReady" && pendingDialogData) {
+        // Dialog is ready, send it the data
+        fdClient.instance.send({
+          message: pendingDialogData
+        });
+      }
+
+      if (msg.action === "forwardResult") {
+        const statusDiv = document.getElementById("status");
+        const btn = document.getElementById("forwardBtn");
+        if (msg.success) {
+          if (msg.mode === "draft") {
+            statusDiv.textContent = "Borrador guardado para " + msg.names;
+          } else {
+            statusDiv.textContent = "Reenviado a " + msg.names;
+          }
+          statusDiv.className = "success";
+        } else {
+          statusDiv.textContent = "Error: " + msg.error;
+          statusDiv.className = "error";
+        }
+        btn.disabled = false;
+      }
+    });
+
     return client.data.get("ticket");
   })
   .then(function(data) {
@@ -32,6 +63,7 @@ app.initialized()
         checkbox.type = "checkbox";
         checkbox.name = "recipient";
         checkbox.value = email;
+        checkbox.dataset.contactName = name;
         if (iparams["contact_" + i + "_default"]) {
           checkbox.checked = true;
         }
@@ -47,7 +79,7 @@ app.initialized()
 
     const btn = document.getElementById("forwardBtn");
     btn.disabled = false;
-    btn.addEventListener("click", forwardConversation);
+    btn.addEventListener("click", openForwardDialog);
   })
   .catch(function(err) {
     document.getElementById("status").textContent = "Error al iniciar: " + (err.message || JSON.stringify(err));
@@ -57,118 +89,44 @@ app.initialized()
 function getSelectedRecipients() {
   const checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
   const emails = [];
+  const names = [];
   for (let i = 0; i < checkboxes.length; i++) {
     emails.push(checkboxes[i].value);
+    names.push(checkboxes[i].dataset.contactName);
   }
-  return emails;
+  return { emails: emails, names: names };
 }
 
-function forwardConversation() {
+function openForwardDialog() {
   const statusDiv = document.getElementById("status");
   const btn = document.getElementById("forwardBtn");
 
-  const recipients = getSelectedRecipients();
-  if (recipients.length === 0) {
+  const selected = getSelectedRecipients();
+  if (selected.emails.length === 0) {
     statusDiv.textContent = "Selecciona al menos un destinatario.";
     statusDiv.className = "error";
     return;
   }
 
-  statusDiv.textContent = "Obteniendo ticket y conversaciones...";
-  statusDiv.className = "loading";
-  btn.disabled = true;
+  statusDiv.textContent = "";
+  statusDiv.className = "";
 
-  const ctx = { ticket_id: ticketId, auth_token: authToken };
+  // Prepare data for the dialog
+  pendingDialogData = {
+    action: "dialogData",
+    ticketId: ticketId,
+    ticketSubject: ticketSubject,
+    authToken: authToken,
+    recipientEmails: selected.emails,
+    recipientNames: selected.names
+  };
 
-  // Get ticket details AND conversations in parallel
-  Promise.all([
-    fdClient.request.invokeTemplate("getTicket", { context: ctx }),
-    fdClient.request.invokeTemplate("getConversations", { context: ctx })
-  ])
-  .then(function(results) {
-    const ticket = JSON.parse(results[0].response);
-    const conversations = JSON.parse(results[1].response);
-
-    const totalMessages = 1 + conversations.length;
-    statusDiv.textContent = "Preparando reenvio (" + totalMessages + " mensajes)...";
-
-    // Build email body: ticket description + all conversations
-    const emailBody = buildFullEmailHtml(ticket, conversations);
-
-    return fdClient.request.invokeTemplate("forwardTicket", {
-      context: ctx,
-      body: JSON.stringify({
-        body: emailBody,
-        to_emails: recipients,
-        include_quoted_text: false,
-        include_original_attachments: true
-      })
-    });
-  })
-  .then(function() {
-    const names = getSelectedNames();
-    statusDiv.textContent = "Ticket reenviado a " + names;
-    statusDiv.className = "success";
-    btn.disabled = false;
-  })
-  .catch(function(err) {
-    statusDiv.textContent = "Error: " + (err.message || JSON.stringify(err));
+  // Open the dialog
+  fdClient.interface.trigger("showDialog", {
+    title: "Reenviar conversación",
+    template: "dialog.html"
+  }).catch(function(err) {
+    statusDiv.textContent = "Error al abrir diálogo: " + (err.message || JSON.stringify(err));
     statusDiv.className = "error";
-    btn.disabled = false;
   });
-}
-
-function getSelectedNames() {
-  const checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
-  const names = [];
-  for (let i = 0; i < checkboxes.length; i++) {
-    const label = checkboxes[i].parentElement.querySelector("span").textContent;
-    names.push(label);
-  }
-  return names.join(", ");
-}
-
-function buildFullEmailHtml(ticket, conversations) {
-  let html = "<h3>Ticket #" + ticketId + " — " + ticketSubject + "</h3>";
-  html += "<hr>";
-
-  // 1. Original ticket description (first message)
-  const ticketDate = new Date(ticket.created_at).toLocaleString("es-ES");
-  const requester = ticket.requester || {};
-  const ticketFrom = requester.email || requester.name || "Cliente";
-
-  html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #f57c00;background:#fff8e1;'>";
-  html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
-  html += "<strong>" + ticketFrom + "</strong> — " + ticketDate + " (Mensaje original)";
-  html += "</p>";
-  html += "<div>" + (ticket.description || ticket.description_text || "") + "</div>";
-  html += "</div>";
-
-  // 2. Conversations (only public replies, skip private notes)
-  if (conversations.length > 0) {
-    conversations.sort(function(a, b) {
-      return new Date(a.created_at) - new Date(b.created_at);
-    });
-
-    for (let i = 0; i < conversations.length; i++) {
-      const conv = conversations[i];
-
-      // Skip private notes
-      if (conv.private) {
-        continue;
-      }
-
-      const date = new Date(conv.created_at).toLocaleString("es-ES");
-      const from = conv.from_email || "Agente";
-
-      html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #2196F3;background:#e3f2fd;'>";
-      html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
-      html += "<strong>" + from + "</strong> — " + date;
-      html += "</p>";
-      html += "<div>" + (conv.body || conv.body_text || "") + "</div>";
-      html += "</div>";
-    }
-  }
-
-  return html;
 }

@@ -31,5 +31,16 @@
         "Content-Type": "application/json"
       }
     }
+  },
+  "createDraft": {
+    "schema": {
+      "method": "POST",
+      "host": "<%= iparam.freshdesk_domain %>",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>/reply_draft",
+      "headers": {
+        "Authorization": "Basic <%= context.auth_token %>",
+        "Content-Type": "application/json"
+      }
+    }
   }
 }
