@@ -45,6 +45,9 @@ app.initialized()
     buildTemplates(iparams);
     document.getElementById("forwardBtn").disabled = false;
     document.getElementById("forwardBtn").addEventListener("click", handleForward);
+    document.getElementById("cancelBtn").addEventListener("click", function() {
+      fdClient.instance.close();
+    });
   })
   .catch(function(err) {
     showStatus("Error al iniciar: " + (err.message || JSON.stringify(err)), "error");
