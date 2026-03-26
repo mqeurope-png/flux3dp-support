@@ -21,11 +21,11 @@
       }
     }
   },
-  "replyTicket": {
+  "forwardTicket": {
     "schema": {
       "method": "POST",
       "host": "<%= iparam.freshdesk_domain %>",
-      "path": "/api/v2/tickets/<%= context.ticket_id %>/reply",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>/forward",
       "headers": {
         "Authorization": "Basic <%= context.auth_token %>",
         "Content-Type": "application/json"

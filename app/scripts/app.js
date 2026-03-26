@@ -95,11 +95,13 @@ function forwardConversation() {
     // Build email body: ticket description + all conversations
     const emailBody = buildFullEmailHtml(ticket, conversations);
 
-    return fdClient.request.invokeTemplate("replyTicket", {
+    return fdClient.request.invokeTemplate("forwardTicket", {
       context: ctx,
       body: JSON.stringify({
         body: emailBody,
-        to_emails: recipients
+        to_emails: recipients,
+        include_quoted_text: true,
+        include_original_attachments: true
       })
     });
   })
