@@ -74,21 +74,36 @@ function forwardConversation() {
     return;
   }
 
-  statusDiv.textContent = "Reenviando ticket...";
+  statusDiv.textContent = "Obteniendo ticket y conversaciones...";
   statusDiv.className = "loading";
   btn.disabled = true;
 
   const ctx = { ticket_id: ticketId, auth_token: authToken };
 
-  // Forward ticket — Freshdesk handles the conversation quoting
-  fdClient.request.invokeTemplate("forwardTicket", {
-    context: ctx,
-    body: JSON.stringify({
-      body: "<p>Reenvio del ticket #" + ticketId + " — " + ticketSubject + "</p>",
-      to_emails: recipients,
-      include_quoted_text: true,
-      include_original_attachments: true
-    })
+  // Get ticket details AND conversations in parallel
+  Promise.all([
+    fdClient.request.invokeTemplate("getTicket", { context: ctx }),
+    fdClient.request.invokeTemplate("getConversations", { context: ctx })
+  ])
+  .then(function(results) {
+    const ticket = JSON.parse(results[0].response);
+    const conversations = JSON.parse(results[1].response);
+
+    const totalMessages = 1 + conversations.length;
+    statusDiv.textContent = "Preparando reenvio (" + totalMessages + " mensajes)...";
+
+    // Build email body: ticket description + all conversations
+    const emailBody = buildFullEmailHtml(ticket, conversations);
+
+    return fdClient.request.invokeTemplate("forwardTicket", {
+      context: ctx,
+      body: JSON.stringify({
+        body: emailBody,
+        to_emails: recipients,
+        include_quoted_text: false,
+        include_original_attachments: true
+      })
+    });
   })
   .then(function() {
     const names = getSelectedNames();
@@ -111,4 +126,49 @@ function getSelectedNames() {
     names.push(label);
   }
   return names.join(", ");
+}
+
+function buildFullEmailHtml(ticket, conversations) {
+  let html = "<h3>Ticket #" + ticketId + " — " + ticketSubject + "</h3>";
+  html += "<hr>";
+
+  // 1. Original ticket description (first message)
+  const ticketDate = new Date(ticket.created_at).toLocaleString("es-ES");
+  const requester = ticket.requester || {};
+  const ticketFrom = requester.email || requester.name || "Cliente";
+
+  html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #f57c00;background:#fff8e1;'>";
+  html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
+  html += "<strong>" + ticketFrom + "</strong> — " + ticketDate + " (Mensaje original)";
+  html += "</p>";
+  html += "<div>" + (ticket.description || ticket.description_text || "") + "</div>";
+  html += "</div>";
+
+  // 2. Conversations (only public replies, skip private notes)
+  if (conversations.length > 0) {
+    conversations.sort(function(a, b) {
+      return new Date(a.created_at) - new Date(b.created_at);
+    });
+
+    for (let i = 0; i < conversations.length; i++) {
+      const conv = conversations[i];
+
+      // Skip private notes
+      if (conv.private) {
+        continue;
+      }
+
+      const date = new Date(conv.created_at).toLocaleString("es-ES");
+      const from = conv.from_email || "Agente";
+
+      html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #2196F3;background:#e3f2fd;'>";
+      html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
+      html += "<strong>" + from + "</strong> — " + date;
+      html += "</p>";
+      html += "<div>" + (conv.body || conv.body_text || "") + "</div>";
+      html += "</div>";
+    }
+  }
+
+  return html;
 }
