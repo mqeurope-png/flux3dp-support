@@ -12,5 +12,77 @@
     "type": "text",
     "required": true,
     "secure": true
+  },
+  "contact_1_name": {
+    "display_name": "Contacto 1 - Nombre",
+    "description": "Nombre del primer contacto",
+    "type": "text",
+    "required": true
+  },
+  "contact_1_email": {
+    "display_name": "Contacto 1 - Email",
+    "description": "Email del primer contacto",
+    "type": "text",
+    "required": true
+  },
+  "contact_1_default": {
+    "display_name": "Contacto 1 - Marcado por defecto",
+    "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
+    "type": "checkbox",
+    "default_value": true
+  },
+  "contact_2_name": {
+    "display_name": "Contacto 2 - Nombre",
+    "description": "Nombre del segundo contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_2_email": {
+    "display_name": "Contacto 2 - Email",
+    "description": "Email del segundo contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_2_default": {
+    "display_name": "Contacto 2 - Marcado por defecto",
+    "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
+    "type": "checkbox",
+    "default_value": false
+  },
+  "contact_3_name": {
+    "display_name": "Contacto 3 - Nombre",
+    "description": "Nombre del tercer contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_3_email": {
+    "display_name": "Contacto 3 - Email",
+    "description": "Email del tercer contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_3_default": {
+    "display_name": "Contacto 3 - Marcado por defecto",
+    "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
+    "type": "checkbox",
+    "default_value": false
+  },
+  "contact_4_name": {
+    "display_name": "Contacto 4 - Nombre",
+    "description": "Nombre del cuarto contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_4_email": {
+    "display_name": "Contacto 4 - Email",
+    "description": "Email del cuarto contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_4_default": {
+    "display_name": "Contacto 4 - Marcado por defecto",
+    "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
+    "type": "checkbox",
+    "default_value": false
   }
 }
