@@ -15,8 +15,33 @@ app.initialized()
     return fdClient.iparams.get();
   })
   .then(function(iparams) {
-    // Freshdesk API auth: base64(api_key:X)
     authToken = btoa(iparams.freshdesk_api_key + ":X");
+
+    // Build contact checkboxes from iparams
+    const contactsList = document.getElementById("contacts-list");
+    for (let i = 1; i <= 4; i++) {
+      const name = iparams["contact_" + i + "_name"];
+      const email = iparams["contact_" + i + "_email"];
+      if (name && email) {
+        const label = document.createElement("label");
+        label.className = "contact-option";
+
+        const checkbox = document.createElement("input");
+        checkbox.type = "checkbox";
+        checkbox.name = "recipient";
+        checkbox.value = email;
+        if (iparams["contact_" + i + "_default"]) {
+          checkbox.checked = true;
+        }
+
+        const span = document.createElement("span");
+        span.textContent = name;
+
+        label.appendChild(checkbox);
+        label.appendChild(span);
+        contactsList.appendChild(label);
+      }
+    }
 
     const btn = document.getElementById("forwardBtn");
     btn.disabled = false;
@@ -40,7 +65,6 @@ function forwardConversation() {
   const statusDiv = document.getElementById("status");
   const btn = document.getElementById("forwardBtn");
 
-  // Validate at least one recipient selected
   const recipients = getSelectedRecipients();
   if (recipients.length === 0) {
     statusDiv.textContent = "Selecciona al menos un destinatario.";
@@ -52,7 +76,6 @@ function forwardConversation() {
   statusDiv.className = "loading";
   btn.disabled = true;
 
-  // Step 1: Get all conversations for this ticket
   fdClient.request.invokeTemplate("getConversations", {
     context: {
       ticket_id: ticketId,
@@ -64,10 +87,8 @@ function forwardConversation() {
 
     statusDiv.textContent = "Preparando reenvio (" + conversations.length + " mensajes)...";
 
-    // Step 2: Build the email body with the full conversation
     const emailBody = buildConversationHtml(conversations);
 
-    // Step 3: Send as reply to the selected recipients
     return fdClient.request.invokeTemplate("replyTicket", {
       context: {
         ticket_id: ticketId,
@@ -111,7 +132,6 @@ function buildConversationHtml(conversations) {
     return html;
   }
 
-  // Sort by created_at ascending (oldest first)
   conversations.sort(function(a, b) {
     return new Date(a.created_at) - new Date(b.created_at);
   });
