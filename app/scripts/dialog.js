@@ -51,35 +51,39 @@ app.initialized()
   });
 
 function buildTemplates(iparams) {
-  const msgs = [];
+  const list = document.getElementById("templates-list");
+  let count = 0;
   for (let i = 1; i <= 4; i++) {
     const title = iparams["msg_" + i + "_title"];
     const body = iparams["msg_" + i + "_body"];
     if (title && body) {
-      msgs.push({ title: title, body: body });
+      const label = document.createElement("label");
+      label.className = "template-option";
+      const cb = document.createElement("input");
+      cb.type = "checkbox";
+      cb.name = "template";
+      cb.dataset.body = body;
+      cb.addEventListener("change", rebuildMessage);
+      const span = document.createElement("span");
+      span.textContent = title;
+      label.appendChild(cb);
+      label.appendChild(span);
+      list.appendChild(label);
+      count++;
     }
   }
-  if (msgs.length === 0) { return; }
-
-  const select = document.getElementById("templateSelect");
-  for (let i = 0; i < msgs.length; i++) {
-    const opt = document.createElement("option");
-    opt.value = String(i);
-    opt.textContent = msgs[i].title;
-    opt.dataset.body = msgs[i].body;
-    select.appendChild(opt);
+  if (count > 0) {
+    document.getElementById("templates-section").classList.remove("hidden");
   }
+}
 
-  document.getElementById("templates-section").classList.remove("hidden");
-  select.addEventListener("change", function() {
-    if (this.value === "") { return; }
-    const opt = this.options[this.selectedIndex];
-    const ta = document.getElementById("agentMessage");
-    const current = ta.value.trim();
-    ta.value = current ? current + "\n\n" + opt.dataset.body : opt.dataset.body;
-    ta.focus();
-    this.value = "";
-  });
+function rebuildMessage() {
+  const cbs = document.querySelectorAll('input[name="template"]:checked');
+  const parts = [];
+  for (let i = 0; i < cbs.length; i++) {
+    parts.push(cbs[i].dataset.body);
+  }
+  document.getElementById("agentMessage").value = parts.join("\n\n");
 }
 
 function getSelected() {
