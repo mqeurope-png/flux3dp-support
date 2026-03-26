@@ -74,8 +74,11 @@ function buildTemplates(iparams) {
   select.addEventListener("change", function() {
     if (this.value === "") { return; }
     const opt = this.options[this.selectedIndex];
-    document.getElementById("agentMessage").value = opt.dataset.body;
-    document.getElementById("agentMessage").focus();
+    const ta = document.getElementById("agentMessage");
+    const current = ta.value.trim();
+    ta.value = current ? current + "\n\n" + opt.dataset.body : opt.dataset.body;
+    ta.focus();
+    this.value = "";
   });
 }
 
