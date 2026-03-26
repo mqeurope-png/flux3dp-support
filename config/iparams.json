@@ -10,8 +10,7 @@
     "display_name": "API Key de Freshdesk",
     "description": "API Key de un agente con permisos para leer tickets y responder",
     "type": "text",
-    "required": true,
-    "secure": true
+    "required": true
   },
   "contact_1_name": {
     "display_name": "Contacto 1 - Nombre",
