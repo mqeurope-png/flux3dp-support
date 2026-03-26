@@ -51,7 +51,6 @@ function renderRecipients(names, emails) {
 function handleAction(mode) {
   if (!dialogData) return;
 
-  const statusDiv = document.getElementById("status");
   const forwardBtn = document.getElementById("forwardBtn");
   const draftBtn = document.getElementById("draftBtn");
 

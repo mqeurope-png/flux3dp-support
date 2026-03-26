@@ -99,7 +99,6 @@ function getSelectedRecipients() {
 
 function openForwardDialog() {
   const statusDiv = document.getElementById("status");
-  const btn = document.getElementById("forwardBtn");
 
   const selected = getSelectedRecipients();
   if (selected.emails.length === 0) {
