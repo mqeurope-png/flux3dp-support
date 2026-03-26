@@ -1,6 +1,6 @@
-var fdClient;
-var ticketId;
-var authToken;
+let fdClient;
+let ticketId;
+let authToken;
 
 app.initialized()
   .then(function(client) {
@@ -18,7 +18,7 @@ app.initialized()
     // Freshdesk API auth: base64(api_key:X)
     authToken = btoa(iparams.freshdesk_api_key + ":X");
 
-    var btn = document.getElementById("forwardBtn");
+    const btn = document.getElementById("forwardBtn");
     btn.disabled = false;
     btn.addEventListener("click", forwardConversation);
   })
@@ -28,20 +28,20 @@ app.initialized()
   });
 
 function getSelectedRecipients() {
-  var checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
-  var emails = [];
-  for (var i = 0; i < checkboxes.length; i++) {
+  const checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
+  const emails = [];
+  for (let i = 0; i < checkboxes.length; i++) {
     emails.push(checkboxes[i].value);
   }
   return emails;
 }
 
 function forwardConversation() {
-  var statusDiv = document.getElementById("status");
-  var btn = document.getElementById("forwardBtn");
+  const statusDiv = document.getElementById("status");
+  const btn = document.getElementById("forwardBtn");
 
   // Validate at least one recipient selected
-  var recipients = getSelectedRecipients();
+  const recipients = getSelectedRecipients();
   if (recipients.length === 0) {
     statusDiv.textContent = "Selecciona al menos un destinatario.";
     statusDiv.className = "error";
@@ -60,12 +60,12 @@ function forwardConversation() {
     }
   })
   .then(function(response) {
-    var conversations = JSON.parse(response.response);
+    const conversations = JSON.parse(response.response);
 
     statusDiv.textContent = "Preparando reenvio (" + conversations.length + " mensajes)...";
 
     // Step 2: Build the email body with the full conversation
-    var emailBody = buildConversationHtml(conversations);
+    const emailBody = buildConversationHtml(conversations);
 
     // Step 3: Send as reply to the selected recipients
     return fdClient.request.invokeTemplate("replyTicket", {
@@ -80,7 +80,7 @@ function forwardConversation() {
     });
   })
   .then(function() {
-    var names = getSelectedNames();
+    const names = getSelectedNames();
     statusDiv.textContent = "Conversacion reenviada a " + names;
     statusDiv.className = "success";
     btn.disabled = false;
@@ -93,17 +93,17 @@ function forwardConversation() {
 }
 
 function getSelectedNames() {
-  var checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
-  var names = [];
-  for (var i = 0; i < checkboxes.length; i++) {
-    var label = checkboxes[i].parentElement.querySelector("span").textContent;
+  const checkboxes = document.querySelectorAll('input[name="recipient"]:checked');
+  const names = [];
+  for (let i = 0; i < checkboxes.length; i++) {
+    const label = checkboxes[i].parentElement.querySelector("span").textContent;
     names.push(label);
   }
   return names.join(", ");
 }
 
 function buildConversationHtml(conversations) {
-  var html = "<h3>Conversacion completa del ticket #" + ticketId + "</h3>";
+  let html = "<h3>Conversacion completa del ticket #" + ticketId + "</h3>";
   html += "<hr>";
 
   if (conversations.length === 0) {
@@ -116,11 +116,11 @@ function buildConversationHtml(conversations) {
     return new Date(a.created_at) - new Date(b.created_at);
   });
 
-  for (var i = 0; i < conversations.length; i++) {
-    var conv = conversations[i];
-    var date = new Date(conv.created_at).toLocaleString("es-ES");
-    var from = conv.from_email || "Agente";
-    var source = getSourceLabel(conv.source);
+  for (let i = 0; i < conversations.length; i++) {
+    const conv = conversations[i];
+    const date = new Date(conv.created_at).toLocaleString("es-ES");
+    const from = conv.from_email || "Agente";
+    const source = getSourceLabel(conv.source);
 
     html += "<div style='margin-bottom:15px;padding:10px;border-left:3px solid #2196F3;background:#f9f9f9;'>";
     html += "<p style='margin:0 0 5px 0;color:#666;font-size:12px;'>";
@@ -134,7 +134,7 @@ function buildConversationHtml(conversations) {
 }
 
 function getSourceLabel(source) {
-  var labels = {
+  const labels = {
     0: "Respuesta",
     1: "Nota",
     2: "Email",
