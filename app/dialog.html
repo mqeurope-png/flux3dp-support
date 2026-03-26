@@ -8,20 +8,26 @@
 </head>
 <body>
   <div id="dialog-app">
-    <div class="recipients-summary">
-      <p class="label">Destinatarios:</p>
-      <div id="recipients-list"></div>
+    <div class="contacts-section">
+      <p class="label">Reenviar a:</p>
+      <div id="contacts-list"></div>
+    </div>
+
+    <div class="canned-section hidden" id="canned-section">
+      <p class="label">Respuesta predefinida:</p>
+      <select id="cannedSelect">
+        <option value="">— Selecciona una respuesta —</option>
+      </select>
     </div>
 
     <div class="message-section">
       <p class="label">Mensaje para los destinatarios (opcional):</p>
-      <textarea id="agentMessage" rows="5" placeholder="Escribe un mensaje personal para los destinatarios del reenvío..."></textarea>
+      <textarea id="agentMessage" rows="5" placeholder="Escribe un mensaje personal..."></textarea>
     </div>
 
     <div class="actions">
       <button id="forwardBtn" class="btn btn-primary" disabled>Reenviar ahora</button>
       <button id="draftBtn" class="btn btn-secondary" disabled>Guardar borrador</button>
-      <button id="cancelBtn" class="btn btn-cancel">Cancelar</button>
     </div>
 
     <div id="status"></div>

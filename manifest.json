@@ -6,7 +6,9 @@
         "getTicket": {},
         "getConversations": {},
         "forwardTicket": {},
-        "createDraft": {}
+        "createDraft": {},
+        "getCannedFolders": {},
+        "getCannedResponses": {}
       }
     },
     "support_ticket": {
