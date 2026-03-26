@@ -3,8 +3,6 @@
   "modules": {
     "common": {
       "requests": {
-        "getTicket": {},
-        "getConversations": {},
         "forwardTicket": {}
       }
     },
