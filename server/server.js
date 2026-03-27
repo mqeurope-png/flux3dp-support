@@ -13,8 +13,8 @@ exports = {
 
     // Step 1: Fetch ticket + conversations
     return Promise.all([
-      $request.get(baseUrl + "/api/v2/tickets/" + ticketId, { headers: authHeaders }),
-      $request.get(baseUrl + "/api/v2/tickets/" + ticketId + "/conversations", { headers: authHeaders })
+      $request(baseUrl + "/api/v2/tickets/" + ticketId, { method: "GET", headers: authHeaders }),
+      $request(baseUrl + "/api/v2/tickets/" + ticketId + "/conversations", { method: "GET", headers: authHeaders })
     ])
     .then(function(results) {
       const ticket = JSON.parse(results[0].response);
@@ -43,7 +43,8 @@ exports = {
       parts.push("--" + boundary + "--\r\n");
 
       const forwardUrl = baseUrl + "/api/v2/tickets/" + ticketId + "/forward";
-      return $request.post(forwardUrl, {
+      return $request(forwardUrl, {
+        method: "POST",
         headers: {
           "Authorization": "Basic " + token,
           "Content-Type": "multipart/form-data; boundary=" + boundary
