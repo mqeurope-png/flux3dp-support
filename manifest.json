@@ -6,6 +6,11 @@
         "getTicket": {},
         "getConversations": {},
         "forwardTicket": {}
+      },
+      "functions": {
+        "forwardWithAttachments": {
+          "timeout": 30
+        }
       }
     },
     "support_ticket": {

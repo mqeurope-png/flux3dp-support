@@ -64,20 +64,24 @@ body {
   display: none;
 }
 
-#templateSelect {
-  width: 100%;
-  padding: 8px 10px;
-  border: 1px solid #ddd;
-  border-radius: 6px;
-  font-family: inherit;
+.template-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 5px 0;
+  cursor: pointer;
   font-size: 13px;
-  background: #fff;
+}
+
+.template-option input[type="checkbox"] {
+  width: 16px;
+  height: 16px;
+  accent-color: #f57c00;
   cursor: pointer;
 }
 
-#templateSelect:focus {
-  outline: none;
-  border-color: #1a73e8;
+.template-option span {
+  user-select: none;
 }
 
 .message-section {
@@ -101,6 +105,33 @@ body {
   outline: none;
   border-color: #1a73e8;
   box-shadow: 0 0 0 2px rgba(26, 115, 232, 0.15);
+}
+
+.attachments-section {
+  display: flex;
+  flex-direction: column;
+}
+
+#fileInput {
+  font-size: 13px;
+  cursor: pointer;
+}
+
+#file-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 6px;
+  margin-top: 6px;
+}
+
+.file-tag {
+  display: inline-block;
+  padding: 3px 8px;
+  background: #e8f5e9;
+  color: #2e7d32;
+  border-radius: 10px;
+  font-size: 11px;
+  font-weight: 500;
 }
 
 .actions {
@@ -131,6 +162,16 @@ body {
 
 .btn-primary:hover:not(:disabled) {
   background: #1557b0;
+}
+
+.btn-cancel {
+  background: transparent;
+  color: #888;
+  margin-left: auto;
+}
+
+.btn-cancel:hover {
+  color: #333;
 }
 
 .btn-secondary {

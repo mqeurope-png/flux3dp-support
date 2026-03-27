@@ -20,7 +20,7 @@ app.initialized()
     authToken = btoa(iparams.freshdesk_api_key + ":X");
 
     const list = document.getElementById("contacts-list");
-    for (let i = 1; i <= 4; i++) {
+    for (let i = 1; i <= 5; i++) {
       const name = iparams["contact_" + i + "_name"];
       const email = iparams["contact_" + i + "_email"];
       if (name && email) {
@@ -43,6 +43,7 @@ app.initialized()
     }
 
     buildTemplates(iparams);
+    setupFileInput();
     document.getElementById("forwardBtn").disabled = false;
     document.getElementById("forwardBtn").addEventListener("click", handleForward);
     document.getElementById("cancelBtn").addEventListener("click", function() {
@@ -89,6 +90,40 @@ function rebuildMessage() {
   document.getElementById("agentMessage").value = parts.join("\n\n");
 }
 
+function setupFileInput() {
+  const input = document.getElementById("fileInput");
+  const fileList = document.getElementById("file-list");
+  input.addEventListener("change", function() {
+    fileList.innerHTML = "";
+    for (let i = 0; i < input.files.length; i++) {
+      const tag = document.createElement("span");
+      tag.className = "file-tag";
+      tag.textContent = input.files[i].name;
+      fileList.appendChild(tag);
+    }
+  });
+}
+
+function readFilesAsBase64(files) {
+  const promises = [];
+  for (let i = 0; i < files.length; i++) {
+    promises.push(readOneFile(files[i]));
+  }
+  return Promise.all(promises);
+}
+
+function readOneFile(file) {
+  return new Promise(function(resolve, reject) {
+    const reader = new FileReader();
+    reader.onload = function() {
+      const base64 = reader.result.split(",")[1];
+      resolve({ name: file.name, type: file.type, base64: base64 });
+    };
+    reader.onerror = function() { reject(reader.error); };
+    reader.readAsDataURL(file);
+  });
+}
+
 function getSelected() {
   const cbs = document.querySelectorAll('input[name="recipient"]:checked');
   const emails = [];
@@ -112,6 +147,7 @@ function handleForward() {
   showStatus("Obteniendo ticket y conversaciones...", "loading");
 
   const ctx = { ticket_id: ticketId, auth_token: authToken };
+  const files = document.getElementById("fileInput").files;
 
   Promise.all([
     fdClient.request.invokeTemplate("getTicket", { context: ctx }),
@@ -123,6 +159,21 @@ function handleForward() {
     const msg = document.getElementById("agentMessage").value.trim();
     const body = buildBody(ticket, convs, msg);
 
+    if (files.length > 0) {
+      showStatus("Leyendo archivos...", "loading");
+      return readFilesAsBase64(files).then(function(fileData) {
+        showStatus("Reenviando con adjuntos...", "loading");
+        return fdClient.request.invoke("forwardWithAttachments", {
+          data: {
+            ticket_id: ticketId,
+            body: body,
+            to_emails: selected.emails,
+            attachments: fileData
+          }
+        });
+      });
+    }
+
     showStatus("Reenviando...", "loading");
     return fdClient.request.invokeTemplate("forwardTicket", {
       context: ctx,
@@ -132,10 +183,10 @@ function handleForward() {
         include_quoted_text: false,
         include_original_attachments: true
       })
-    }).then(function() { return selected.names.join(", "); });
+    });
   })
-  .then(function(names) {
-    showStatus("Reenviado a " + names, "success");
+  .then(function() {
+    showStatus("Reenviado a " + selected.names.join(", "), "success");
     setTimeout(function() {
       fdClient.instance.close();
     }, 1500);

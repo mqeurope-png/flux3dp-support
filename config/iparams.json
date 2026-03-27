@@ -84,6 +84,24 @@
     "type": "checkbox",
     "default_value": false
   },
+  "contact_5_name": {
+    "display_name": "Contacto 5 - Nombre",
+    "description": "Nombre del quinto contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_5_email": {
+    "display_name": "Contacto 5 - Email",
+    "description": "Email del quinto contacto (opcional)",
+    "type": "text",
+    "required": false
+  },
+  "contact_5_default": {
+    "display_name": "Contacto 5 - Marcado por defecto",
+    "description": "Si se activa, este contacto aparecera seleccionado al abrir la app",
+    "type": "checkbox",
+    "default_value": false
+  },
   "msg_1_title": {
     "display_name": "Mensaje 1 - Titulo",
     "description": "Titulo del primer mensaje predefinido",
