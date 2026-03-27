@@ -166,7 +166,8 @@ function handleForward() {
         return fdClient.request.invoke("forwardWithAttachments", {
           data: {
             ticket_id: ticketId,
-            body: body,
+            ticket_subject: ticketSubject,
+            agent_message: msg,
             to_emails: selected.emails,
             attachments: fileData
           }
