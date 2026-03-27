@@ -163,14 +163,15 @@ function handleForward() {
       showStatus("Leyendo archivos...", "loading");
       return readFilesAsBase64(files).then(function(fileData) {
         showStatus("Reenviando con adjuntos...", "loading");
-        return fdClient.request.invoke("forwardWithAttachments", {
-          data: {
+        const boundary = "----FDKBoundary" + Date.now();
+        const multipartBody = buildMultipart(boundary, body, selected.emails, fileData);
+        return fdClient.request.invokeTemplate("forwardTicketMultipart", {
+          context: {
             ticket_id: ticketId,
-            ticket_subject: ticketSubject,
-            agent_message: msg,
-            to_emails: selected.emails,
-            attachments: fileData
-          }
+            auth_token: authToken,
+            content_type: "multipart/form-data; boundary=" + boundary
+          },
+          body: multipartBody
         });
       });
     }
@@ -240,6 +241,40 @@ function buildBody(ticket, convs, agentMsg) {
     }
   }
   return h;
+}
+
+function buildMultipart(boundary, emailBody, emails, files) {
+  let mp = "";
+  mp += "--" + boundary + "\r\n";
+  mp += "Content-Disposition: form-data; name=\"body\"\r\n\r\n";
+  mp += emailBody + "\r\n";
+
+  for (let i = 0; i < emails.length; i++) {
+    mp += "--" + boundary + "\r\n";
+    mp += "Content-Disposition: form-data; name=\"to_emails[]\"\r\n\r\n";
+    mp += emails[i] + "\r\n";
+  }
+
+  mp += "--" + boundary + "\r\n";
+  mp += "Content-Disposition: form-data; name=\"include_quoted_text\"\r\n\r\n";
+  mp += "false\r\n";
+
+  mp += "--" + boundary + "\r\n";
+  mp += "Content-Disposition: form-data; name=\"include_original_attachments\"\r\n\r\n";
+  mp += "true\r\n";
+
+  for (let i = 0; i < files.length; i++) {
+    const f = files[i];
+    const ct = f.type || "application/octet-stream";
+    mp += "--" + boundary + "\r\n";
+    mp += "Content-Disposition: form-data; name=\"attachments[]\"; filename=\"" + f.name + "\"\r\n";
+    mp += "Content-Type: " + ct + "\r\n";
+    mp += "Content-Transfer-Encoding: base64\r\n\r\n";
+    mp += f.base64 + "\r\n";
+  }
+
+  mp += "--" + boundary + "--\r\n";
+  return mp;
 }
 
 function esc(t) {
