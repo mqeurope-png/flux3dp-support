@@ -3,55 +3,52 @@ exports = {
     const data = args.data;
     const iparams = args.iparams;
     const domain = iparams.freshdesk_domain;
-    const token = Buffer.from(iparams.freshdesk_api_key + ":X").toString("base64");
+    const token = b64encode(iparams.freshdesk_api_key + ":X");
     const ticketId = data.ticket_id;
     const baseUrl = "https://" + domain;
-    const headers = {
+    const authHeaders = {
       "Authorization": "Basic " + token,
       "Content-Type": "application/json"
     };
 
-    // Step 1: Fetch ticket + conversations in parallel
+    // Step 1: Fetch ticket + conversations
     return Promise.all([
-      $request.get(baseUrl + "/api/v2/tickets/" + ticketId, { headers: headers }),
-      $request.get(baseUrl + "/api/v2/tickets/" + ticketId + "/conversations", { headers: headers })
+      $request.get(baseUrl + "/api/v2/tickets/" + ticketId, { headers: authHeaders }),
+      $request.get(baseUrl + "/api/v2/tickets/" + ticketId + "/conversations", { headers: authHeaders })
     ])
     .then(function(results) {
       const ticket = JSON.parse(results[0].response);
       const convs = JSON.parse(results[1].response);
       const emailBody = buildBody(ticketId, data.ticket_subject, ticket, convs, data.agent_message);
 
-      // Step 2: Forward with multipart
-      const forwardUrl = baseUrl + "/api/v2/tickets/" + ticketId + "/forward";
-      const formData = {
-        body: emailBody,
-        include_quoted_text: "false",
-        include_original_attachments: "true"
-      };
+      // Step 2: Build multipart body manually
+      const boundary = "----FDKBoundary" + Date.now();
+      const parts = [];
+
+      parts.push(textPart(boundary, "body", emailBody));
 
       const emails = data.to_emails || [];
-      formData["to_emails[]"] = emails.length === 1 ? emails[0] : emails;
-
-      const attachments = data.attachments || [];
-      if (attachments.length === 1) {
-        formData["attachments[]"] = {
-          value: Buffer.from(attachments[0].base64, "base64"),
-          options: { filename: attachments[0].name, contentType: attachments[0].type || "application/octet-stream" }
-        };
-      } else if (attachments.length > 1) {
-        const files = [];
-        for (let i = 0; i < attachments.length; i++) {
-          files.push({
-            value: Buffer.from(attachments[i].base64, "base64"),
-            options: { filename: attachments[i].name, contentType: attachments[i].type || "application/octet-stream" }
-          });
-        }
-        formData["attachments[]"] = files;
+      for (let i = 0; i < emails.length; i++) {
+        parts.push(textPart(boundary, "to_emails[]", emails[i]));
       }
 
+      parts.push(textPart(boundary, "include_quoted_text", "false"));
+      parts.push(textPart(boundary, "include_original_attachments", "true"));
+
+      const attachments = data.attachments || [];
+      for (let i = 0; i < attachments.length; i++) {
+        parts.push(filePart(boundary, attachments[i]));
+      }
+
+      parts.push("--" + boundary + "--\r\n");
+
+      const forwardUrl = baseUrl + "/api/v2/tickets/" + ticketId + "/forward";
       return $request.post(forwardUrl, {
-        headers: { "Authorization": "Basic " + token },
-        formData: formData
+        headers: {
+          "Authorization": "Basic " + token,
+          "Content-Type": "multipart/form-data; boundary=" + boundary
+        },
+        body: parts.join("")
       });
     })
     .then(function() {
@@ -62,6 +59,36 @@ exports = {
     });
   }
 };
+
+function textPart(boundary, name, value) {
+  return "--" + boundary + "\r\n" +
+    "Content-Disposition: form-data; name=\"" + name + "\"\r\n\r\n" +
+    value + "\r\n";
+}
+
+function filePart(boundary, file) {
+  const ct = file.type || "application/octet-stream";
+  return "--" + boundary + "\r\n" +
+    "Content-Disposition: form-data; name=\"attachments[]\"; filename=\"" + file.name + "\"\r\n" +
+    "Content-Type: " + ct + "\r\n" +
+    "Content-Transfer-Encoding: base64\r\n\r\n" +
+    file.base64 + "\r\n";
+}
+
+function b64encode(str) {
+  const chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789+/";
+  let out = "";
+  for (let i = 0; i < str.length; i += 3) {
+    const a = str.charCodeAt(i);
+    const b = i + 1 < str.length ? str.charCodeAt(i + 1) : 0;
+    const c = i + 2 < str.length ? str.charCodeAt(i + 2) : 0;
+    out += chars[a >> 2];
+    out += chars[((a & 3) << 4) | (b >> 4)];
+    out += i + 1 < str.length ? chars[((b & 15) << 2) | (c >> 6)] : "=";
+    out += i + 2 < str.length ? chars[c & 63] : "=";
+  }
+  return out;
+}
 
 function esc(t) {
   if (!t) { return ""; }
