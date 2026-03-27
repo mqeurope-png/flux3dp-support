@@ -32,14 +32,14 @@
       }
     }
   },
-  "forwardTicketMultipart": {
+  "forwardDraft": {
     "schema": {
       "method": "POST",
       "host": "<%= iparam.freshdesk_domain %>",
-      "path": "/api/v2/tickets/<%= context.ticket_id %>/forward",
+      "path": "/api/v2/tickets/<%= context.ticket_id %>/forward_draft",
       "headers": {
         "Authorization": "Basic <%= context.auth_token %>",
-        "Content-Type": "<%= context.content_type %>"
+        "Content-Type": "application/json"
       }
     }
   }

@@ -6,7 +6,7 @@
         "getTicket": {},
         "getConversations": {},
         "forwardTicket": {},
-        "forwardTicketMultipart": {}
+        "forwardDraft": {}
       }
     },
     "support_ticket": {

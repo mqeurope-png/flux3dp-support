@@ -43,9 +43,14 @@ app.initialized()
     }
 
     buildTemplates(iparams);
-    setupFileInput();
     document.getElementById("forwardBtn").disabled = false;
-    document.getElementById("forwardBtn").addEventListener("click", handleForward);
+    document.getElementById("draftBtn").disabled = false;
+    document.getElementById("forwardBtn").addEventListener("click", function() {
+      handleAction("send");
+    });
+    document.getElementById("draftBtn").addEventListener("click", function() {
+      handleAction("draft");
+    });
     document.getElementById("cancelBtn").addEventListener("click", function() {
       fdClient.instance.close();
     });
@@ -90,40 +95,6 @@ function rebuildMessage() {
   document.getElementById("agentMessage").value = parts.join("\n\n");
 }
 
-function setupFileInput() {
-  const input = document.getElementById("fileInput");
-  const fileList = document.getElementById("file-list");
-  input.addEventListener("change", function() {
-    fileList.innerHTML = "";
-    for (let i = 0; i < input.files.length; i++) {
-      const tag = document.createElement("span");
-      tag.className = "file-tag";
-      tag.textContent = input.files[i].name;
-      fileList.appendChild(tag);
-    }
-  });
-}
-
-function readFilesAsBase64(files) {
-  const promises = [];
-  for (let i = 0; i < files.length; i++) {
-    promises.push(readOneFile(files[i]));
-  }
-  return Promise.all(promises);
-}
-
-function readOneFile(file) {
-  return new Promise(function(resolve, reject) {
-    const reader = new FileReader();
-    reader.onload = function() {
-      const base64 = reader.result.split(",")[1];
-      resolve({ name: file.name, type: file.type, base64: base64 });
-    };
-    reader.onerror = function() { reject(reader.error); };
-    reader.readAsDataURL(file);
-  });
-}
-
 function getSelected() {
   const cbs = document.querySelectorAll('input[name="recipient"]:checked');
   const emails = [];
@@ -135,67 +106,63 @@ function getSelected() {
   return { emails: emails, names: names };
 }
 
-function handleForward() {
+function handleAction(mode) {
   const selected = getSelected();
   if (selected.emails.length === 0) {
     showStatus("Selecciona al menos un destinatario.", "error");
     return;
   }
 
-  const btn = document.getElementById("forwardBtn");
-  btn.disabled = true;
+  var isDraft = mode === "draft";
+  document.getElementById("forwardBtn").disabled = true;
+  document.getElementById("draftBtn").disabled = true;
   showStatus("Obteniendo ticket y conversaciones...", "loading");
 
-  const ctx = { ticket_id: ticketId, auth_token: authToken };
-  const files = document.getElementById("fileInput").files;
+  var ctx = { ticket_id: ticketId, auth_token: authToken };
 
   Promise.all([
     fdClient.request.invokeTemplate("getTicket", { context: ctx }),
     fdClient.request.invokeTemplate("getConversations", { context: ctx })
   ])
   .then(function(res) {
-    const ticket = JSON.parse(res[0].response);
-    const convs = JSON.parse(res[1].response);
-    const msg = document.getElementById("agentMessage").value.trim();
-    const body = buildBody(ticket, convs, msg);
+    var ticket = JSON.parse(res[0].response);
+    var convs = JSON.parse(res[1].response);
+    var msg = document.getElementById("agentMessage").value.trim();
+    var body = buildBody(ticket, convs, msg);
+    var payload = JSON.stringify({
+      body: body,
+      to_emails: selected.emails,
+      include_quoted_text: false,
+      include_original_attachments: true
+    });
 
-    if (files.length > 0) {
-      showStatus("Leyendo archivos...", "loading");
-      return readFilesAsBase64(files).then(function(fileData) {
-        showStatus("Reenviando con adjuntos...", "loading");
-        const boundary = "----FDKBoundary" + Date.now();
-        const multipartBody = buildMultipart(boundary, body, selected.emails, fileData);
-        return fdClient.request.invokeTemplate("forwardTicketMultipart", {
-          context: {
-            ticket_id: ticketId,
-            auth_token: authToken,
-            content_type: "multipart/form-data; boundary=" + boundary
-          },
-          body: multipartBody
-        });
+    if (isDraft) {
+      showStatus("Guardando borrador...", "loading");
+      return fdClient.request.invokeTemplate("forwardDraft", {
+        context: ctx,
+        body: payload
       });
     }
 
     showStatus("Reenviando...", "loading");
     return fdClient.request.invokeTemplate("forwardTicket", {
       context: ctx,
-      body: JSON.stringify({
-        body: body,
-        to_emails: selected.emails,
-        include_quoted_text: false,
-        include_original_attachments: true
-      })
+      body: payload
     });
   })
   .then(function() {
-    showStatus("Reenviado a " + selected.names.join(", "), "success");
+    var successMsg = isDraft
+      ? "Borrador guardado para " + selected.names.join(", ")
+      : "Reenviado a " + selected.names.join(", ");
+    showStatus(successMsg, "success");
     setTimeout(function() {
       fdClient.instance.close();
     }, 1500);
   })
   .catch(function(err) {
     showStatus("Error: " + (err.message || JSON.stringify(err)), "error");
-    btn.disabled = false;
+    document.getElementById("forwardBtn").disabled = false;
+    document.getElementById("draftBtn").disabled = false;
   });
 }
 
@@ -241,40 +208,6 @@ function buildBody(ticket, convs, agentMsg) {
     }
   }
   return h;
-}
-
-function buildMultipart(boundary, emailBody, emails, files) {
-  let mp = "";
-  mp += "--" + boundary + "\r\n";
-  mp += "Content-Disposition: form-data; name=\"body\"\r\n\r\n";
-  mp += emailBody + "\r\n";
-
-  for (let i = 0; i < emails.length; i++) {
-    mp += "--" + boundary + "\r\n";
-    mp += "Content-Disposition: form-data; name=\"to_emails[]\"\r\n\r\n";
-    mp += emails[i] + "\r\n";
-  }
-
-  mp += "--" + boundary + "\r\n";
-  mp += "Content-Disposition: form-data; name=\"include_quoted_text\"\r\n\r\n";
-  mp += "false\r\n";
-
-  mp += "--" + boundary + "\r\n";
-  mp += "Content-Disposition: form-data; name=\"include_original_attachments\"\r\n\r\n";
-  mp += "true\r\n";
-
-  for (let i = 0; i < files.length; i++) {
-    const f = files[i];
-    const ct = f.type || "application/octet-stream";
-    mp += "--" + boundary + "\r\n";
-    mp += "Content-Disposition: form-data; name=\"attachments[]\"; filename=\"" + f.name + "\"\r\n";
-    mp += "Content-Type: " + ct + "\r\n";
-    mp += "Content-Transfer-Encoding: base64\r\n\r\n";
-    mp += f.base64 + "\r\n";
-  }
-
-  mp += "--" + boundary + "--\r\n";
-  return mp;
 }
 
 function esc(t) {
