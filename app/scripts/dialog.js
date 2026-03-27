@@ -44,13 +44,7 @@ app.initialized()
 
     buildTemplates(iparams);
     document.getElementById("forwardBtn").disabled = false;
-    document.getElementById("draftBtn").disabled = false;
-    document.getElementById("forwardBtn").addEventListener("click", function() {
-      handleAction("send");
-    });
-    document.getElementById("draftBtn").addEventListener("click", function() {
-      handleAction("draft");
-    });
+    document.getElementById("forwardBtn").addEventListener("click", handleForward);
     document.getElementById("cancelBtn").addEventListener("click", function() {
       fdClient.instance.close();
     });
@@ -106,16 +100,15 @@ function getSelected() {
   return { emails: emails, names: names };
 }
 
-function handleAction(mode) {
+function handleForward() {
   const selected = getSelected();
   if (selected.emails.length === 0) {
     showStatus("Selecciona al menos un destinatario.", "error");
     return;
   }
 
-  const isDraft = mode === "draft";
-  document.getElementById("forwardBtn").disabled = true;
-  document.getElementById("draftBtn").disabled = true;
+  const btn = document.getElementById("forwardBtn");
+  btn.disabled = true;
   showStatus("Obteniendo ticket y conversaciones...", "loading");
 
   const ctx = { ticket_id: ticketId, auth_token: authToken };
@@ -129,40 +122,27 @@ function handleAction(mode) {
     const convs = JSON.parse(res[1].response);
     const msg = document.getElementById("agentMessage").value.trim();
     const body = buildBody(ticket, convs, msg);
-    const payload = JSON.stringify({
-      body: body,
-      to_emails: selected.emails,
-      include_quoted_text: false,
-      include_original_attachments: true
-    });
-
-    if (isDraft) {
-      showStatus("Guardando borrador...", "loading");
-      return fdClient.request.invokeTemplate("forwardDraft", {
-        context: ctx,
-        body: payload
-      });
-    }
 
     showStatus("Reenviando...", "loading");
     return fdClient.request.invokeTemplate("forwardTicket", {
       context: ctx,
-      body: payload
+      body: JSON.stringify({
+        body: body,
+        to_emails: selected.emails,
+        include_quoted_text: false,
+        include_original_attachments: true
+      })
     });
   })
   .then(function() {
-    const successMsg = isDraft
-      ? "Borrador guardado para " + selected.names.join(", ")
-      : "Reenviado a " + selected.names.join(", ");
-    showStatus(successMsg, "success");
+    showStatus("Reenviado a " + selected.names.join(", "), "success");
     setTimeout(function() {
       fdClient.instance.close();
     }, 1500);
   })
   .catch(function(err) {
     showStatus("Error: " + (err.message || JSON.stringify(err)), "error");
-    document.getElementById("forwardBtn").disabled = false;
-    document.getElementById("draftBtn").disabled = false;
+    btn.disabled = false;
   });
 }
 
