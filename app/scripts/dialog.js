@@ -113,23 +113,23 @@ function handleAction(mode) {
     return;
   }
 
-  var isDraft = mode === "draft";
+  const isDraft = mode === "draft";
   document.getElementById("forwardBtn").disabled = true;
   document.getElementById("draftBtn").disabled = true;
   showStatus("Obteniendo ticket y conversaciones...", "loading");
 
-  var ctx = { ticket_id: ticketId, auth_token: authToken };
+  const ctx = { ticket_id: ticketId, auth_token: authToken };
 
   Promise.all([
     fdClient.request.invokeTemplate("getTicket", { context: ctx }),
     fdClient.request.invokeTemplate("getConversations", { context: ctx })
   ])
   .then(function(res) {
-    var ticket = JSON.parse(res[0].response);
-    var convs = JSON.parse(res[1].response);
-    var msg = document.getElementById("agentMessage").value.trim();
-    var body = buildBody(ticket, convs, msg);
-    var payload = JSON.stringify({
+    const ticket = JSON.parse(res[0].response);
+    const convs = JSON.parse(res[1].response);
+    const msg = document.getElementById("agentMessage").value.trim();
+    const body = buildBody(ticket, convs, msg);
+    const payload = JSON.stringify({
       body: body,
       to_emails: selected.emails,
       include_quoted_text: false,
@@ -151,7 +151,7 @@ function handleAction(mode) {
     });
   })
   .then(function() {
-    var successMsg = isDraft
+    const successMsg = isDraft
       ? "Borrador guardado para " + selected.names.join(", ")
       : "Reenviado a " + selected.names.join(", ");
     showStatus(successMsg, "success");
