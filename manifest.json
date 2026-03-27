@@ -9,7 +9,7 @@
       },
       "functions": {
         "forwardWithAttachments": {
-          "timeout": 30
+          "timeout": 15
         }
       }
     },
